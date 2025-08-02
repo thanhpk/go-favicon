@@ -15,16 +15,19 @@ import (
 	"io"
 	"mime"
 	"net/http"
-	urls "net/url"
+	neturl "net/url"
 	"path/filepath"
+	"time"
+
+	"github.com/subiz/safeurl"
 )
 
 // UserAgent is sent in the User-Agent HTTP header.
 var UserAgent = "go-favicon/0.1"
 
 var (
-	finder *Finder          // used by package-level functions
-	client = &http.Client{} // default client used by Finder
+	// used by package-level functions
+	finder *Finder
 )
 
 func init() {
@@ -39,7 +42,7 @@ type Filter func(*Icon) *Icon
 type Option func(*Finder)
 
 // WithClient configures Finder to use the given HTTP client.
-func WithClient(client *http.Client) Option {
+func WithClient(client WrappedClient) Option {
 	return func(f *Finder) {
 		f.client = client
 	}
@@ -84,6 +87,10 @@ var (
 	})
 )
 
+type WrappedClient interface {
+	Do(req *http.Request) (resp *http.Response, err error)
+}
+
 // Finder discovers favicons for a URL.
 // By default, a Finder looks in the following places:
 //
@@ -104,14 +111,14 @@ var (
 type Finder struct {
 	ignoreManifest  bool
 	ignoreWellKnown bool
-	client          *http.Client
+	client          WrappedClient
 	filters         []Filter
 }
 
 // New creates a new Finder configured with the given options.
 func New(option ...Option) *Finder {
 	f := &Finder{
-		client:  client,
+		client:  safeurl.Client(safeurl.GetConfigBuilder().SetTimeout(30 * time.Second).Build()),
 		filters: []Filter{},
 	}
 	for _, fn := range option {
@@ -138,7 +145,7 @@ func FindReader(r io.Reader, baseURL ...string) ([]*Icon, error) {
 func (f *Finder) FindReader(r io.Reader, baseURL ...string) ([]*Icon, error) {
 	p := f.newParser()
 	if len(baseURL) > 0 {
-		u, err := urls.Parse(baseURL[0])
+		u, err := neturl.Parse(baseURL[0])
 		if err != nil {
 			return nil, err
 		}
@@ -168,7 +175,7 @@ func (f *Finder) fetchURL(url string) (io.ReadCloser, error) {
 }
 
 type parser struct {
-	baseURL *urls.URL
+	baseURL *neturl.URL
 	find    *Finder
 }
 
@@ -181,7 +188,7 @@ func (p *parser) absURL(url string) string {
 		return url
 	}
 
-	u, err := urls.Parse(url)
+	u, err := neturl.Parse(url)
 	if err != nil {
 		return ""
 	}
@@ -193,7 +200,7 @@ func (p *parser) absURL(url string) string {
 
 // return MIME type based on file extension in URL
 func mimeTypeURL(url string) string {
-	u, err := urls.Parse(url)
+	u, err := neturl.Parse(url)
 	if err != nil {
 		return ""
 	}

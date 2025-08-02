@@ -1,5 +1,7 @@
 go-favicon
 
+THIS IS 100% BASED ON [https://git.deanishe.net/deanishe/go-favicon](go.deanishe.net/favicon)
+
 ==========
 [![PkgGoDev][badge-docs]][docs]
 
