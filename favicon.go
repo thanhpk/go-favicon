@@ -48,6 +48,21 @@ func WithClient(client WrappedClient) Option {
 	}
 }
 
+// WithProxy configures Finder to use the specified HTTP proxy.
+// The proxyURL should be in the format: http://proxyhost:port or socks5://proxyhost:port
+func WithProxy(proxyURL string) Option {
+	return func(f *Finder) {
+		proxyURLParsed, err := urls.Parse(proxyURL)
+		if err != nil {
+			return
+		}
+		transport := &http.Transport{
+			Proxy: http.ProxyURL(proxyURLParsed),
+		}
+		f.client.Transport = transport
+	}
+}
+
 // WithFilter only returns Icons accepted by Filter functions.
 func WithFilter(filter ...Filter) Option {
 	return func(f *Finder) {

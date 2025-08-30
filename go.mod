@@ -1,4 +1,4 @@
-module github.com/thanhpk/go-favicon
+module github.com/DeaglePC/go-favicon
 
 go 1.24.2
 
